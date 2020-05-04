@@ -81,14 +81,18 @@ index ef9adb7..8df4d67 100644
  
            if (system_id || public_id)
 EOF
-    patch /usr/include/xsd/cxx/parser/expat/elements.txx xsd-4.0.0-expat.patch
+    patch --forward /usr/include/xsd/cxx/parser/expat/elements.txx \
+      xsd-4.0.0-expat.patch \
+      || (patch -R /usr/include/xsd/cxx/parser/expat/elements.txx \
+      xsd-4.0.0-expat.patch && patch \
+      /usr/include/xsd/cxx/parser/expat/elements.txx xsd-4.0.0-expat.patch)
 }
 
 # For build.sh -based submodules
 function build_sh_process () {
     ldconfig
     pushd $1
-    sed -Ei "s/(\.\/configure)/\1 CXXFLAGS=\"-fpermissive\" /g" build.sh
+    sed -Ei "s/(\.\/configure)/\1 CXXFLAGS=\"-fpermissive -std=gnu++98\" /g" build.sh
     ./build.sh -j$(nproc) && ./build.sh install
     popd
 }
@@ -97,7 +101,7 @@ function build_sh_process () {
 function std_process () {
     ldconfig
     pushd $1
-    ./reconf && ./configure CXXFLAGS="-fpermissive"
+    ./reconf && ./configure CXXFLAGS="-fpermissive -std=gnu++98"
     make -j$(nproc) && make install
     popd
 }
@@ -138,7 +142,7 @@ function install_uhd () {
     export_java_home
     TARGET=uhd
     TARGET_BUILD=${TARGET}/host/build
-    [ -d ${TARGET} ] || git clone -b release_003_010_001_001 git://github.com/EttusResearch/uhd.git ${TARGET}
+    [ -d ${TARGET} ] || git clone -b release_003_010_001_001 https://github.com/EttusResearch/uhd.git ${TARGET}
     [ -d ${TARGET_BUILD} ] || mkdir -p ${TARGET_BUILD}
     pushd ${TARGET_BUILD} && \
         cmake .. && \
@@ -157,7 +161,7 @@ function install_uhd () {
 function install_redhawk () {
     export_java_home
     REDHAWK=redhawk
-    [ -d ${REDHAWK} ] || git clone --recursive -b ${RH_VERSION} git://github.com/RedhawkSDR/redhawk.git ${REDHAWK}
+    [ -d ${REDHAWK} ] || git clone --recursive -b ${RH_VERSION} https://github.com/RedhawkSDR/redhawk.git ${REDHAWK}
     pushd ${REDHAWK}
 
     # ######################
@@ -196,7 +200,7 @@ function install_redhawk () {
 
     # Install redhawk-waveforms
     pushd redhawk-waveforms
-    mkdir $SDRROOT/dom/waveforms/rh
+    [ -d $SDRROOT/dom/waveforms/rh ] || mkdir $SDRROOT/dom/waveforms/rh
     cp -r * $SDRROOT/dom/waveforms/rh
     popd
     # END Std. SDRROOT
@@ -237,7 +241,7 @@ function install_redhawk () {
 function install_redhawk_ide () {
     # Download the IDE
     INSTALL_DIR="${OSSIEHOME}/../ide/${RH_VERSION}"
-    mkdir -p ${INSTALL_DIR} && pushd ${INSTALL_DIR}
+    ( [ -d "${INSTALL_DIR}" ] || mkdir -p ${INSTALL_DIR} ) && pushd ${INSTALL_DIR}
     IDE_ASSET="$(python ${THIS_DIR}/scripts/ide-fetcher.py ${RH_VERSION})"
     if ! [ $? -eq  0 ] || [ "" == "${IDE_ASSET}" ]; then
         echo "Failed to download IDE" 1>&2
@@ -268,7 +272,7 @@ function install_BU353S4 () {
     ldconfig
 
     TARGET="BU353S4"
-    [ -d ${TARGET} ] || git clone -b 1.0.0 git://github.com/GeonTech/BU353S4.git $TARGET
+    [ -d ${TARGET} ] || git clone -b 1.0.0 https://github.com/GeonTech/BU353S4.git $TARGET
     chmod +x ${TARGET}/nodeconfig.py
     build_sh_process ${TARGET}
     rm -rf ${TARGET}
